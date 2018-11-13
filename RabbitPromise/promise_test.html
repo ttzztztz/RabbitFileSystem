@@ -2,27 +2,7 @@
 <body>
 <script src="promise.js"></script>
 <script>
-    function fun(resolve,reject){
-        resolve(1);
-    }
-    let promise = new RabbitPromise(fun);
-    promise.then(data=>{
-        console.log(data);
-        return new RabbitPromise((resolve,reject)=>{
-            resolve(2);
-        });
-    }).then(data=>{
-        console.log(data);
-        return new RabbitPromise((resolve,reject)=>{
-            reject(3);
-        });
-    }).then(data=>{
-        console.log(data);
-        return new RabbitPromise((resolve,reject)=>{
-            resolve(4);
-        });
-    })
-    ;
+
 </script>
 </body>
 </html>
