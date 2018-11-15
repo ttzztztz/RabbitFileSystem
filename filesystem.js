@@ -23,7 +23,7 @@ const initFileIndex = [
 ];
 
 let fileObject = {
-    address: "",
+    address: 0,
     name: "",
     path: "",
     type: "file",
@@ -164,7 +164,7 @@ File.prototype.delete = function (path) {
     let result = 0;
     let filename = _structure[_structure.length - 1];
     for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if (_dir.contains[i].type === "file" && _dir.contains[i].name === filename) {
+        if (_dir.contains[i].name === filename) {
             let storage = new Storage();
             storage.delete("RBFS_file_" + _dir.contains[i].address);
             delete _dir.contains[i];
@@ -212,7 +212,7 @@ File.prototype.changeDate = function (path, time) {
     let result = 0;
     let filename = _structure[_structure.length - 1];
     for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if (_dir.contains[i].type === "file" && _dir.contains[i].name === filename) {
+        if (_dir.contains[i].name === filename) {
             _dir.contains[i].time = time;
             let save = new Save();
             save.fileIndex();
@@ -225,40 +225,51 @@ File.prototype.changeDate = function (path, time) {
 
 File.prototype.move = function (path_from, path_to) {
     let _structure = this.getPathArray(path_from);
-    let _dir = this.getDirObject(path_from, 1);
+    let _dir = this.getDirObject(_structure, 1);
     let filename = _structure[_structure.length - 1];
     let copy = null;
     let result = 0;
-    for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if (_dir.contains[i].name === filename) {
-            copy = Object.assign({}, _dir.contains[i]);
-            delete _dir.contains[i];
-            break;
+    _dir.contains = _dir.contains.filter(function (item, index, array) {
+        if (item.name === filename) {
+            copy = Object.assign({}, item);
         }
-    }
+        return item.name !== filename;
+    });
     if (copy !== null) {
         _structure = this.getPathArray(path_to);
-        _dir = this.getDirObject(path_to, 1);
         filename = _structure[_structure.length - 1];
+        _dir = this.getDirObject(_structure, 1);
         copy.name = filename;
+        _structure.pop();
+        copy.path = "/" + _structure.join("/");
         _dir.contains.push(copy);
+        result = 1;
     }
-    let Save = new Save();
-    Save.fileIndex();
+    let save = new Save();
+    save.fileIndex();
     return result;
 };
 
 File.prototype.getDirObject = function (path, is_arr = 0) {
     let arr = is_arr ? path : this.getPathArray(path);
     let last_obj = fileIndex[0];
-    for (let i = 0, len = arr.length; i < len; i++) {
-        if (!last_obj.hasOwnProperty("contains")) break;
+
+    for (let i = 1, len = arr.length; i < len; i++) {
+        if (!last_obj.hasOwnProperty("contains")) {
+            last_obj = null;
+            break;
+        }
+        let find_flag = 0;
         for (let m = 0, dir_len = last_obj.contains.length; m < dir_len; m++) {
-            console.log(m,last_obj.contains[m]);
             if (last_obj.contains[m].type === "dir" && last_obj.contains[m].name === arr[i]) {
                 last_obj = last_obj.contains[m];
+                find_flag = 1;
                 break;
             }
+        }
+        if (!find_flag && i !== len - 1) {
+            last_obj = null;
+            break;
         }
     }
     return last_obj;
@@ -287,20 +298,41 @@ Directory.prototype.create = function (path, name) {
     return 1;
 };
 
-Directory.prototype.move = function () {
-
+Directory.prototype.move = function (path_from,path_to) {
+    let file = new File();
+    file.move(path_from , path_to);
+    let _structure = file.getPathArray(path_from);
+    let _dir = file.getDirObject(_structure, 1);
+    _dir.contains.forEach(function (item, index, array) {
+        if (item.type === "dir") {
+            this.move(item.path + "/" + item.name , path_to+"/"+item.name);
+        } else {
+            file.move(item.path + "/" + item.name , path_to+"/"+item.name);
+        }
+    });
+    return 1;
 };
 
-Directory.prototype.delete = function () {
-
+Directory.prototype.delete = function (path) {
+    let file = new File();
+    file.delete(path);
+    let _structure = file.getPathArray(path);
+    let _dir = file.getDirObject(_structure, 1);
+    _dir.contains.forEach(function (item, index, array) {
+        if (item.type === "dir") {
+            this.delete(item.path + "/" + item.name);
+        } else {
+            file.delete(item.path + "/" + item.name);
+        }
+    });
+    return 1;
 };
 
-Directory.prototype.changeDate = function () {
-
-};
-
-Directory.prototype.list = function () {
-
+Directory.prototype.list = function (path) {
+    let file = new File();
+    let _structure = file.getPathArray(path);
+    let _dir = file.getDirObject(_structure, 1);
+    return _dir;
 };
 
 //<-- Save OPT
