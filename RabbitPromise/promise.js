@@ -28,6 +28,7 @@ RabbitPromise.prototype.reject = function (val) {
     }
 };
 RabbitPromise.prototype.then = function (__resolve, __reject) {
+    if(__resolve === __reject) this.status="Rejected";
     let that = this;
     if (typeof __resolve !== "function") __resolve = function (value) {
     };

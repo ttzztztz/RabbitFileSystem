@@ -2,7 +2,7 @@ const argReg = /(?:(['"])?(.+?)?(?:(?<!\\)\1)|([^'"\s]+))/g;
 const dirReg = /(?<=\/)(\w+)(?=\/)/;
 const initFileIndex = [
     {
-        address: "0",
+        address: 0,
         name: "home",
         path: "/",
         type: "dir",
@@ -10,7 +10,7 @@ const initFileIndex = [
         other: "",
         contains: [
             {
-                address: "1",
+                address: 1,
                 name: "hello",
                 path: "/home",
                 type: "file",
@@ -145,11 +145,10 @@ File.prototype.create = function (path, name, content = "") {
     _file_index.type = "file";
     let storage = new Storage();
     storage.create("RBFS_file_" + _file_index.address, content);
+    let _dir = this.getDirObject(path, 0);
     _dir.contains.push(_file_index);
     let save = new Save();
-    save.autoIncrement();
     save.fileIndex();
-    let _dir = this.getDirObject(path, 0);
     return 1;
 };
 
@@ -231,7 +230,7 @@ File.prototype.move = function (path_from, path_to) {
     let copy = null;
     let result = 0;
     for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if (_dir.contains[i].type === "file" && _dir.contains[i].name === filename) {
+        if (_dir.contains[i].name === filename) {
             copy = Object.assign({}, _dir.contains[i]);
             delete _dir.contains[i];
             break;
@@ -255,6 +254,7 @@ File.prototype.getDirObject = function (path, is_arr = 0) {
     for (let i = 0, len = arr.length; i < len; i++) {
         if (!last_obj.hasOwnProperty("contains")) break;
         for (let m = 0, dir_len = last_obj.contains.length; m < dir_len; m++) {
+            console.log(m,last_obj.contains[m]);
             if (last_obj.contains[m].type === "dir" && last_obj.contains[m].name === arr[i]) {
                 last_obj = last_obj.contains[m];
                 break;
@@ -269,8 +269,22 @@ function Directory() {
 
 }
 
-Directory.prototype.create = function () {
-
+Directory.prototype.create = function (path, name) {
+    let _file_index = Object.create(fileObject);
+    _file_index.address = fileAutoIncrement++;
+    _file_index.name = name;
+    _file_index.path = path;
+    _file_index.time = Date.parse(new Date());
+    _file_index.type = "dir";
+    _file_index.contains = [];
+    let storage = new Storage();
+    storage.create("RBFS_file_" + _file_index.address, "RBFS_RESERVED");
+    let file = new File();
+    let _dir = file.getDirObject(path, 0);
+    _dir.contains.push(_file_index);
+    let save = new Save();
+    save.fileIndex();
+    return 1;
 };
 
 Directory.prototype.move = function () {
