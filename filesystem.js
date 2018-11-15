@@ -137,7 +137,7 @@ function File() {
 
 }
 
-File.prototype.create = function (path, name, content = "") {
+File.prototype.create = function (path, name, content = "", type) {
     let _file_index = Object.create(fileObject);
     _file_index.address = fileAutoIncrement++;
     _file_index.name = name;
@@ -159,23 +159,25 @@ File.prototype.getPathArray = function (path) {
     return arr;
 };
 
-File.prototype.delete = function (path , is_dir = 0) {
+File.prototype.delete = function (path, is_dir = 0) {
     let _structure = this.getPathArray(path);
     let directory = new Directory();
-    let _dir = is_dir? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
+    let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
     let result = 0;
     let filename = _structure[_structure.length - 1];
-    for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if (_dir.contains[i].name === filename) {
+    _dir.contains = _dir.contains.filter(function (item, index, array) {
+        if (item.name === filename) {
             let storage = new Storage();
             storage.delete("RBFS_file_" + _dir.contains[i].address);
             delete _dir.contains[i];
             let save = new Save();
             save.fileIndex();
             result = 1;
-            break;
         }
-    }
+        return item.name !== filename;
+    });
+    let save = new Save();
+    save.fileIndex();
     return result;
 };
 
@@ -208,19 +210,19 @@ File.prototype.read = function (path) {
     return null;
 };
 
-File.prototype.readAddress = function(address){
+File.prototype.readAddress = function (address) {
     let storage = new Storage();
     return storage.read("RBFS_file_" + address);
 };
 
-File.prototype.insertAddress = function(content){
+File.prototype.insertAddress = function (content) {
     let rtn = fileAutoIncrement++;
     let storage = new Storage();
-    storage.create("RBFS_file_"+rtn , content);
+    storage.create("RBFS_file_" + rtn, content);
     return rtn;
 };
 
-File.prototype.deleteAddress = function(address){
+File.prototype.deleteAddress = function (address) {
     let storage = new Storage();
     return storage.delete("RBFS_file_" + address);
 };
@@ -242,21 +244,37 @@ File.prototype.changeDate = function (path, time) {
     return result;
 };
 
-File.prototype.copy = function (path_from, path_to) {
-    let content = this.read(path_from);
-    let pathArr = this.getPathArray(path_to);
-    let filename = pathArr[pathArr.length - 1];
-    pathArr.pop();
-    let to = "/" + pathArr.join("/");
-    this.create(to, filename, content);
-    return 1;
+File.prototype.copy = function (path_from, path_to, is_dir = 0) {
+    let _structure = this.getPathArray(path_from);
+    let directory = new Directory();
+    let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
+    let filename = _structure[_structure.length - 1];
+    let copy = null;
+    let result = 0;
+    _dir.contains.forEach(function (item, index, array) {
+        if (item.name === filename) {
+            copy = Object.assign({}, item);
+        }
+    });
+    if (copy !== null) {
+        let _structure2 = this.getPathArray(path_to);
+        filename = _structure2[_structure2.length - 1];
+        _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
+        copy.name = filename;
+        _structure2.pop();
+        copy.path = "/" + _structure2.join("/");
+        _dir.contains.push(copy);
+        result = 1;
+    }
+    let save = new Save();
+    save.fileIndex();
+    return result;
 };
 
 File.prototype.move = function (path_from, path_to, is_dir = 0) {
     let _structure = this.getPathArray(path_from);
     let directory = new Directory();
     let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
-
     let filename = _structure[_structure.length - 1];
     let copy = null;
     let result = 0;
@@ -313,7 +331,7 @@ function Directory() {
 Directory.prototype.getDirObject = function (path, is_arr = 0) {
     let file = new File();
     let arr = is_arr ? path : file.getPathArray(path);
-    let arr_rtn = Object.assign([],arr);
+    let arr_rtn = Object.assign([], arr);
     arr_rtn.pop();
     return file.getDirObject(arr_rtn, 1);
 };
@@ -338,36 +356,36 @@ Directory.prototype.create = function (path, name) {
 
 Directory.prototype.updatePath = function (root) {
     let file = new File();
-    let tree = file.getDirObject(root,0);
+    let tree = file.getDirObject(root, 0);
     let that = this;
-    tree.contains.forEach(function(item,index,array){
+    tree.contains.forEach(function (item, index, array) {
         item.path = root;
-        if(item.type==="dir"){
+        if (item.type === "dir") {
             that.updatePath(root + "/" + item.name);
         }
     });
 };
 
-Directory.prototype.updateAddress = function(root){
+Directory.prototype.updateAddress = function (root) {
     let file = new File();
-    let tree = file.getDirObject(root,0);
+    let tree = file.getDirObject(root, 0);
     let that = this;
-    tree.contains.forEach(function(item,index,array){
+    tree.contains.forEach(function (item, index, array) {
         item.path = root;
         let content = file.readAddress(item.address);
         item.address = file.insertAddress(content);
-        if(item.type==="dir"){
+        if (item.type === "dir") {
             that.updatePath(root + "/" + item.name);
         }
     });
 };
 
-Directory.prototype.deleteAddress = function(root){
+Directory.prototype.deleteAddress = function (root) {
     let file = new File();
-    let tree = file.getDirObject(root,0);
+    let tree = file.getDirObject(root, 0);
     let that = this;
-    tree.contains.forEach(function(item,index,array){
-        if(item.type==="dir"){
+    tree.contains.forEach(function (item, index, array) {
+        if (item.type === "dir") {
             that.deleteAddress(root + "/" + item.name);
         } else {
             file.deleteAddress(item.address);
@@ -380,9 +398,9 @@ Directory.prototype.move = function (path_from, path_to) {
     let to_arr = file.getPathArray(path_to);
     let to_dirname = to_arr[to_arr.length - 1];
     to_arr.pop();
-    let _path_to = "/"+to_arr.join("/")+"/"+to_dirname;
+    let _path_to = "/" + to_arr.join("/") + "/" + to_dirname;
     file.move(path_from, _path_to, 1);
-    this.updatePath("/"+to_arr.join("/"));
+    this.updatePath(_path_to);
     let save = new Save();
     save.fileIndex();
     return 1;
@@ -393,9 +411,9 @@ Directory.prototype.copy = function (path_from, path_to) {
     let to_arr = file.getPathArray(path_to);
     let to_dirname = to_arr[to_arr.length - 1];
     to_arr.pop();
-    let _path_to = "/"+to_arr.join("/")+"/"+to_dirname;
+    let _path_to = "/" + to_arr.join("/") + "/" + to_dirname;
     file.copy(path_from, _path_to, 1);
-    this.updateAddress("/"+to_arr.join("/"));
+    this.updateAddress(_path_to);
     let save = new Save();
     save.fileIndex();
     return 1;
@@ -404,8 +422,8 @@ Directory.prototype.copy = function (path_from, path_to) {
 Directory.prototype.delete = function (path) {
     let file = new File();
     let to_arr = file.getPathArray(path);
-    this.deleteAddress("/"+to_arr.join("/"));
-    file.delete(path , 1);
+    this.deleteAddress(path);
+    file.delete(path, 1);
     let save = new Save();
     save.fileIndex();
     return 1;
@@ -416,6 +434,7 @@ Directory.prototype.list = function (path) {
     let _structure = file.getPathArray(path);
     return file.getDirObject(_structure, 1);
 };
+
 //<-- Save OPT
 function Save() {
 
