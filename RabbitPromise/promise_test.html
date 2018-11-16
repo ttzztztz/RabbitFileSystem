@@ -2,22 +2,58 @@
 <body>
 <script src="promise.js"></script>
 <script>
+    /**
     function f1(resolve, reject) {
-        reject("886");
+        resolve("886");
     }
     let p = new RabbitPromise(f1);
     p.then(data=>{
         console.log(1);
-        return 1;
+        return new RabbitPromise((resolve,reject)=>{
+            reject(999);
+        });
     },data=>{
         console.log(2);
         return new RabbitPromise((resolve,reject)=>{
             reject(data);
         });
     }).then(
-        data=>{},
         data=>{
             console.log(data);
+            return 9;
+        },
+        data=>{
+            console.log(data);
+        }
+    );**/
+
+    function f1(resolve, reject) {
+        resolve("886");
+    }
+    let p = new Promise(f1);
+    p.then(data=>{
+        console.log(1);
+        return Promise.reject(999);
+    },data=>{
+        console.log(2);
+        return Promise.reject(data);
+    }).then(
+        data=>{
+            console.log("R"+data);
+            return data;
+        },
+        data=>{
+            console.log("N"+data);
+            return data;
+        }
+    ).then(
+        data=>{
+            console.log("R"+data);
+            return data;
+        },
+        data=>{
+            console.log("N"+data);
+            return data;
         }
     );
 </script>

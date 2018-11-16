@@ -4,7 +4,12 @@ function RabbitPromise(func) {
     this._reject_callback = [];
     this.status = "Pending";
     let that = this;
-    func(this.resolve.bind(this), this.reject.bind(this));
+    try {
+        let rtn = func(this.resolve.bind(this), this.reject.bind(this));
+        this.resolve(rtn);
+    } catch(e){
+        this.reject(e);
+    }
 }
 
 RabbitPromise.prototype.resolve = function (val) {
@@ -53,6 +58,8 @@ RabbitPromise.prototype.then = function (__resolve, __reject) {
                 let x = __reject(that.value);
                 if (x instanceof RabbitPromise) {
                     x.then(resolve, reject);
+                } else {
+                    reject(x);
                 }
             } catch (e) {
                 reject(e);
