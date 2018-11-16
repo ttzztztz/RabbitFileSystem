@@ -141,6 +141,8 @@ function File() {
 }
 
 File.prototype.create = function (path, name, content = "RBFS_File", fix_address = -1, is_hardlink = 0) {
+    let check = this.getType(path);
+    if (check !== "null") return -1;
     let _file_index = Object.create(fileObject);
     if (fix_address === -1) _file_index.address = fileAutoIncrement++;
     else _file_index.address = fix_address;
@@ -171,7 +173,55 @@ File.prototype.getPathArray = function (path) {
     return arr;
 };
 
+File.prototype.getType = function (path) {
+    let arr = this.getPathArray(path);
+    let result = 0;
+    let last_obj = fileIndex[0];
+    for (let i = 1, len = arr.length; i < len; i++) {
+        if (!last_obj.hasOwnProperty("contains")) {
+            last_obj = null;
+            break;
+        }
+        let find_flag = 0;
+        for (let m = 0, dir_len = last_obj.contains.length; m < dir_len; m++) {
+            if (last_obj.contains[m].name === arr[i]) {
+                last_obj = last_obj.contains[m];
+                find_flag = 1;
+                break;
+            }
+        }
+        if (!find_flag && i !== len - 1) {
+            last_obj = null;
+            break;
+        }
+    }
+    if (last_obj === null) {
+        result = "null";
+    } else {
+        switch (last_obj.type) {
+            default :
+                result = "default";
+                break;
+            case "dir":
+                result = "dir";
+                break;
+            case "file":
+                result = "file";
+                break;
+            case "softlink":
+                result = "softlink";
+                break;
+            case "hardlink":
+                result = "hardlink";
+                break;
+        }
+    }
+    return result;
+};
+
 File.prototype.delete = function (path, is_dir = 0) {
+    let check = this.getType(path);
+    if (check === "null") return -1;
     let _structure = this.getPathArray(path);
     let directory = new Directory();
     let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
@@ -179,12 +229,23 @@ File.prototype.delete = function (path, is_dir = 0) {
     let filename = _structure[_structure.length - 1];
     _dir.contains = _dir.contains.filter(function (item, index, array) {
         if (item.name === filename) {
-            if (item.type === "file" || item.type === "softlink") {
+            let link = new Link();
+            if (item.type === "file") {
+                //find if hardlink exists
+                let hard_check = link.findHard(item.address);
+                if (hard_check === null || hard_check === undefined) {
+                    let storage = new Storage();
+                    storage.delete("RBFS_file_" + item.address);
+                } else {
+                    link.deleteHard(item.address);
+                }
+            } else if (item.type === "softlink") {
+                //do nothing about address
+            } else if (item.type === "hardlink") {
+                link.deleteHard(item.address);
+            } else if (item.type === "dir") {
                 let storage = new Storage();
                 storage.delete("RBFS_file_" + item.address);
-            } else {
-                let link = new Link();
-                link.deleteHard(item.address);
             }
             let save = new Save();
             save.fileIndex();
@@ -252,6 +313,8 @@ File.prototype.deleteAddress = function (address) {
 };
 
 File.prototype.changeDate = function (path, time) {
+    let check = this.getType(path);
+    if (check === "null") return -1;
     let _structure = this.getPathArray(path);
     let _dir = this.getDirObject(_structure, 1);
     let result = 0;
@@ -269,6 +332,8 @@ File.prototype.changeDate = function (path, time) {
 };
 
 File.prototype.copy = function (path_from, path_to, is_dir = 0) {
+    let check1 = this.getType(path_from);
+    if (check1 === "null") return -1;
     let _structure = this.getPathArray(path_from);
     let directory = new Directory();
     let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
@@ -284,8 +349,12 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
         let _structure2 = this.getPathArray(path_to);
         filename = _structure2[_structure2.length - 1];
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
+        let check2 = this.getType(_dir.path + "/" + _dir.name);
+        if (check2 === "null") return -2;
         copy.name = filename;
-        if (copy.type === "file") {
+        let time = new Time();
+        copy.time = time.time();
+        if (copy.type === "file" || copy.type === "dir") {
             let content = this.readAddress(copy.address);
             copy.address = this.insertAddress(content);
         } else if (copy.type === "softlink") {
@@ -305,6 +374,8 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
 };
 
 File.prototype.move = function (path_from, path_to, is_dir = 0) {
+    let check1 = this.getType(path_from);
+    if (check1 === "null") return -1;
     let _structure = this.getPathArray(path_from);
     let directory = new Directory();
     let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
@@ -321,6 +392,8 @@ File.prototype.move = function (path_from, path_to, is_dir = 0) {
         let _structure2 = this.getPathArray(path_to);
         filename = _structure2[_structure2.length - 1];
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
+        let check2 = this.getType(_dir.path + "/" + _dir.name);
+        if (check2 === "null") return -2;
         copy.name = filename;
         _structure2.pop();
         copy.path = "/" + _structure2.join("/");
@@ -336,7 +409,6 @@ File.prototype.getDirObject = function (path, is_arr = 0) {
     let arr = is_arr ? path : this.getPathArray(path);
     let last_obj = fileIndex[0];
     for (let i = 1, len = arr.length; i < len; i++) {
-
         if (!last_obj.hasOwnProperty("contains")) {
             last_obj = null;
             break;
@@ -371,6 +443,9 @@ Directory.prototype.getDirObject = function (path, is_arr = 0) {
 };
 
 Directory.prototype.create = function (path, name) {
+    let file = new File();
+    let check = file.getType(path);
+    if (check !== "null") return -1;
     let _file_index = Object.create(fileObject);
     _file_index.address = fileAutoIncrement++;
     _file_index.name = name;
@@ -380,7 +455,6 @@ Directory.prototype.create = function (path, name) {
     _file_index.contains = [];
     let storage = new Storage();
     storage.create("RBFS_file_" + _file_index.address, "RBFS_RESERVED");
-    let file = new File();
     let _dir = file.getDirObject(path, 0);
     _dir.contains.push(_file_index);
     let save = new Save();
@@ -406,7 +480,7 @@ Directory.prototype.updateAddress = function (root) {
     let that = this;
     tree.contains.forEach(function (item, index, array) {
         item.path = root;
-        if (item.type === "file") {
+        if (item.type === "file" || item.type === "dir") {
             let content = file.readAddress(item.address);
             item.address = file.insertAddress(content);
         } else if (item.type === "softlink") {
@@ -429,16 +503,21 @@ Directory.prototype.deleteAddress = function (root) {
             that.deleteAddress(root + "/" + item.name);
         } else if (item.type === "hardlink" || item.type === "file") {
             file.deleteAddress(item.address);
+        } else if (item.type === "softlink") {
+            //do nothing about softlink address
         }
-        //do nothing about softlink address
     });
 };
 
 Directory.prototype.move = function (path_from, path_to) {
     let file = new File();
+    let check1 = file.getType(path_from);
+    if (check1 !== "dir") return -1;
     let to_arr = file.getPathArray(path_to);
     let to_dirname = to_arr[to_arr.length - 1];
     to_arr.pop();
+    let check2 = file.getType("/" + to_arr.join("/"));
+    if (check2 !== "dir") return -1;
     let _path_to = "/" + to_arr.join("/") + "/" + to_dirname;
     file.move(path_from, _path_to, 1);
     this.updatePath(_path_to);
@@ -449,9 +528,13 @@ Directory.prototype.move = function (path_from, path_to) {
 
 Directory.prototype.copy = function (path_from, path_to) {
     let file = new File();
+    let check1 = file.getType(path_from);
+    if (check1 !== "dir") return -1;
     let to_arr = file.getPathArray(path_to);
     let to_dirname = to_arr[to_arr.length - 1];
     to_arr.pop();
+    let check2 = file.getType("/" + to_arr.join("/"));
+    if (check2 !== "dir") return -2;
     let _path_to = "/" + to_arr.join("/") + "/" + to_dirname;
     file.copy(path_from, _path_to, 1);
     this.updateAddress(_path_to);
@@ -462,6 +545,8 @@ Directory.prototype.copy = function (path_from, path_to) {
 
 Directory.prototype.delete = function (path) {
     let file = new File();
+    let check = file.getType(path);
+    if (check !== "dir") return -1;
     let to_arr = file.getPathArray(path);
     this.deleteAddress(path);
     file.delete(path, 1);
@@ -472,6 +557,8 @@ Directory.prototype.delete = function (path) {
 
 Directory.prototype.list = function (path) {
     let file = new File();
+    let check = file.getType(path);
+    if (check !== "dir") return -1;
     let _structure = file.getPathArray(path);
     return file.getDirObject(_structure, 1);
 };
