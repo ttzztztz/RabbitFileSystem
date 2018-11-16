@@ -1,5 +1,4 @@
 const argReg = /(?:(['"])?(.+?)?(?:(?<!\\)\1)|([^'"\s]+))/g;
-const dirReg = /(?<=\/)(\w+)(?=\/)/;
 const initFileIndex = [
     {
         address: 0,
@@ -36,11 +35,6 @@ let fileAutoIncrement = 0;
 
 let currentDir = "/home";
 
-//<-- Time Functions
-/**
- * @returns {string}
- * @constructor
- */
 function Time() {
 
 }
@@ -137,15 +131,18 @@ function File() {
 
 }
 
-File.prototype.create = function (path, name, content = "", type) {
+File.prototype.create = function (path, name, content = "RBFS_File", fix_address = -1) {
     let _file_index = Object.create(fileObject);
-    _file_index.address = fileAutoIncrement++;
+    if (fix_address === -1) _file_index.address = fileAutoIncrement++;
+    else _file_index.address = fix_address;
     _file_index.name = name;
     _file_index.path = path;
     _file_index.time = Date.parse(new Date());
     _file_index.type = "file";
-    let storage = new Storage();
-    storage.create("RBFS_file_" + _file_index.address, content);
+    if (fix_address === -1) {
+        let storage = new Storage();
+        storage.create("RBFS_file_" + _file_index.address, content);
+    }
     let _dir = this.getDirObject(path, 0);
     _dir.contains.push(_file_index);
     let save = new Save();
@@ -261,6 +258,9 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
         filename = _structure2[_structure2.length - 1];
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
         copy.name = filename;
+        let content = this.readAddress(copy.address);
+        copy.address = fileAutoIncrement;
+        this.insertAddress(content);
         _structure2.pop();
         copy.path = "/" + _structure2.join("/");
         _dir.contains.push(copy);
@@ -456,18 +456,13 @@ function Link() {
 
 }
 
-Link.prototype.create = function (path, filename, address) {
-    let _file_index = Object.create(fileObject);
-    _file_index.address = address;
-    _file_index.name = filename;
-    _file_index.path = path;
-    _file_index.time = Date.parse(new Date());
-    _file_index.type = "file";
-    let _dir = this.getDirObject(path, 0);
-    _dir.contains.push(_file_index);
-    let save = new Save();
-    save.fileIndex();
-    return 1;
+Link.prototype.createSoft = function (path, name, address) {
+    let file = new File();
+    file.create(path, name, "", address);
+};
+
+Link.prototype.createHard = function (path, filename, address) {
+
 };
 
 //<-- All packet
