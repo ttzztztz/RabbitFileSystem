@@ -147,10 +147,13 @@ File.prototype.create = function (path, name, content = "RBFS_File", fix_address
     _file_index.name = name;
     _file_index.path = path;
     _file_index.time = Date.parse(new Date());
-    if (is_hardlink)
-        _file_index.type = "link";
-    else
+    if (is_hardlink) {
+        _file_index.type = "hardlink";
+    } else if (is_hardlink === 0 && fix_address !== -1) {
+        _file_index.type = "softlink";
+    } else {
         _file_index.type = "file";
+    }
     if (fix_address === -1) {
         let storage = new Storage();
         storage.create("RBFS_file_" + _file_index.address, content);
@@ -176,8 +179,13 @@ File.prototype.delete = function (path, is_dir = 0) {
     let filename = _structure[_structure.length - 1];
     _dir.contains = _dir.contains.filter(function (item, index, array) {
         if (item.name === filename) {
-            let storage = new Storage();
-            storage.delete("RBFS_file_" + item.address);
+            if (item.type === "file" || item.type === "softlink") {
+                let storage = new Storage();
+                storage.delete("RBFS_file_" + item.address);
+            } else {
+                let link = new Link();
+                link.deleteHard(item.address);
+            }
             let save = new Save();
             save.fileIndex();
             result = 1;
@@ -197,7 +205,7 @@ File.prototype.updateContent = function (path, content) {
     let result = 0;
     let filename = _structure[_structure.length - 1];
     for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if ((_dir.contains[i].type === "file" || _dir.contains[i].type === "address") && _dir.contains[i].name === filename) {
+        if ((_dir.contains[i].type === "file" || _dir.contains[i].type === "softlink" || _dir.contains[i].type === "hardlink") && _dir.contains[i].name === filename) {
             let storage = new Storage();
             storage.update("RBFS_file_" + _dir.contains[i].address, content);
             result = 1;
@@ -212,7 +220,7 @@ File.prototype.read = function (path) {
     let _dir = this.getDirObject(_structure, 1);
     let filename = _structure[_structure.length - 1];
     for (let i = 0, len = _dir.contains.length; i < len; i++) {
-        if ((_dir.contains[i].type === "file" || _dir.contains[i].type === "address") && _dir.contains[i].name === filename) {
+        if ((_dir.contains[i].type === "file" || _dir.contains[i].type === "softlink" || _dir.contains[i].type === "hardlink") && _dir.contains[i].name === filename) {
             let storage = new Storage();
             return storage.read("RBFS_file_" + _dir.contains[i].address);
         }
@@ -277,9 +285,15 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
         filename = _structure2[_structure2.length - 1];
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
         copy.name = filename;
-        let content = this.readAddress(copy.address);
-        copy.address = fileAutoIncrement;
-        this.insertAddress(content);
+        if (copy.type === "file") {
+            let content = this.readAddress(copy.address);
+            copy.address = this.insertAddress(content);
+        } else if (copy.type === "softlink") {
+            //do noting about address
+        } else if (copy.type === "hardlink") {
+            let link = new Link();
+            link.addHard(copy.address);
+        }
         _structure2.pop();
         copy.path = "/" + _structure2.join("/");
         _dir.contains.push(copy);
@@ -322,6 +336,7 @@ File.prototype.getDirObject = function (path, is_arr = 0) {
     let arr = is_arr ? path : this.getPathArray(path);
     let last_obj = fileIndex[0];
     for (let i = 1, len = arr.length; i < len; i++) {
+
         if (!last_obj.hasOwnProperty("contains")) {
             last_obj = null;
             break;
@@ -391,9 +406,15 @@ Directory.prototype.updateAddress = function (root) {
     let that = this;
     tree.contains.forEach(function (item, index, array) {
         item.path = root;
-        let content = file.readAddress(item.address);
-        item.address = file.insertAddress(content);
-        if (item.type === "dir") {
+        if (item.type === "file") {
+            let content = file.readAddress(item.address);
+            item.address = file.insertAddress(content);
+        } else if (item.type === "softlink") {
+            //do nothing about address
+        } else if (item.type === "hardlink") {
+            let link = new Link();
+            link.addHard(item.address);
+        } else if (item.type === "dir") {
             that.updatePath(root + "/" + item.name);
         }
     });
@@ -406,9 +427,10 @@ Directory.prototype.deleteAddress = function (root) {
     tree.contains.forEach(function (item, index, array) {
         if (item.type === "dir") {
             that.deleteAddress(root + "/" + item.name);
-        } else {
+        } else if (item.type === "hardlink" || item.type === "file") {
             file.deleteAddress(item.address);
         }
+        //do nothing about softlink address
     });
 };
 
@@ -482,7 +504,7 @@ function Link() {
 
 Link.prototype.createSoft = function (path, name, address) {
     let file = new File();
-    file.create(path, name, "", address, 0);
+    return file.create(path, name, "", address, 0);
 };
 
 Link.prototype.findHard = function (address) {
@@ -503,24 +525,34 @@ Link.prototype.createHard = function (path, name, address) {
     if (result === null) {
         let index = Object.create(hardLinkObject);
         index.address = address;
-        index.count = 1;
+        index.count = 2;
         hardLinkIndex.push(index);
     } else {
         result.count++;
     }
     let save = new Save();
     save.hardLinkIndex();
+    return 1;
 };
 
 Link.prototype.deleteHard = function (address) {
     let result = this.findHard(address);
-    if (result === null) return 0;
+    if (result === null || result === undefined) return 0;
     result.count--;
     if (result.count === 0) {
         hardLinkIndex = hardLinkIndex.filter(function (item, index, array) {
             return item.address !== address;
         });
     }
+    let save = new Save();
+    save.hardLinkIndex();
+    return 1;
+};
+
+Link.prototype.addHard = function (address) {
+    let result = this.findHard(address);
+    if (result === null || result === undefined) return 0;
+    result.count++;
     let save = new Save();
     save.hardLinkIndex();
     return 1;
