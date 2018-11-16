@@ -20,7 +20,6 @@ const initFileIndex = [
         ],
     }
 ];
-
 let fileObject = {
     address: 0,
     name: "",
@@ -141,8 +140,10 @@ function File() {
 }
 
 File.prototype.create = function (path, name, content = "RBFS_File", fix_address = -1, is_hardlink = 0) {
-    let check = this.getType(path);
-    if (check !== "null") return -1;
+    let check1 = this.getType(path + "/" + name);
+    if (check1 !== "null") return -1;
+    let check2 = this.getType(path);
+    if (check2 === "null") return -2;
     let _file_index = Object.create(fileObject);
     if (fix_address === -1) _file_index.address = fileAutoIncrement++;
     else _file_index.address = fix_address;
@@ -190,7 +191,7 @@ File.prototype.getType = function (path) {
                 break;
             }
         }
-        if (!find_flag && i !== len - 1) {
+        if (!find_flag) {
             last_obj = null;
             break;
         }
@@ -342,7 +343,7 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
     let result = 0;
     _dir.contains.forEach(function (item, index, array) {
         if (item.name === filename) {
-            copy = Object.assign({}, item);
+            copy = JSON.parse(JSON.stringify(item));
         }
     });
     if (copy !== null) {
@@ -350,7 +351,9 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
         filename = _structure2[_structure2.length - 1];
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
         let check2 = this.getType(_dir.path + "/" + _dir.name);
-        if (check2 === "null") return -2;
+        if (check2 !== "null") return -2;
+        let check3 = this.getType(_dir.path);
+        if (check3 === "null") return -3;
         copy.name = filename;
         let time = new Time();
         copy.time = time.time();
@@ -392,11 +395,13 @@ File.prototype.move = function (path_from, path_to, is_dir = 0) {
         let _structure2 = this.getPathArray(path_to);
         filename = _structure2[_structure2.length - 1];
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
-        let check2 = this.getType(_dir.path + "/" + _dir.name);
+        let check2 = this.getType(_dir.path==="/" ? "/" : "/" + _dir.name);
         if (check2 === "null") return -2;
         copy.name = filename;
         _structure2.pop();
         copy.path = "/" + _structure2.join("/");
+        let time = new Time();
+        copy.time = time.time();
         _dir.contains.push(copy);
         result = 1;
     }
@@ -444,8 +449,10 @@ Directory.prototype.getDirObject = function (path, is_arr = 0) {
 
 Directory.prototype.create = function (path, name) {
     let file = new File();
-    let check = file.getType(path);
-    if (check !== "null") return -1;
+    let check1 = file.getType(path + "/" + name);
+    if (check1 !== "null") return -1;
+    let check2 = file.getType(path);
+    if (check2 === "null") return -2;
     let _file_index = Object.create(fileObject);
     _file_index.address = fileAutoIncrement++;
     _file_index.name = name;
@@ -607,7 +614,8 @@ Link.prototype.findHard = function (address) {
 
 Link.prototype.createHard = function (path, name, address) {
     let file = new File();
-    file.create(path, name, "", address, 1);
+    let r = file.create(path, name, "", address, 1);
+    if (r !== 1) return r;
     let result = this.findHard(address);
     if (result === null) {
         let index = Object.create(hardLinkObject);
@@ -627,6 +635,8 @@ Link.prototype.deleteHard = function (address) {
     if (result === null || result === undefined) return 0;
     result.count--;
     if (result.count === 0) {
+        let storage = new Storage();
+        storage.delete("RBFS_file_" + result.address);
         hardLinkIndex = hardLinkIndex.filter(function (item, index, array) {
             return item.address !== address;
         });
