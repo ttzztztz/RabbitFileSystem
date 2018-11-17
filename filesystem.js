@@ -306,6 +306,21 @@ File.prototype.read = function (path) {
     return null;
 };
 
+File.prototype.writeAddress = function (address, content) {
+    let storage = new Storage();
+    return storage.update("RBFS_file_" + address, content);
+};
+
+File.prototype.appendAddress = function (address, content) {
+    let storage = new Storage();
+    let to_write = storage.read("RBFS_file_" + address);
+    if (to_write === null || to_write === undefined) {
+        return storage.create("RBFS_file_" + address, content);
+    } else {
+        return storage.update("RBFS_file_" + address, to_write + content);
+    }
+};
+
 File.prototype.getAddress = function (path) {
     let _structure = this.getPathArray(path);
     if (_structure[0] !== "home") return -3;
@@ -626,6 +641,17 @@ Save.prototype.hardLinkIndex = function () {
 function Link() {
 
 }
+
+Link.prototype.softExist = function (path) {
+    let file = new File();
+    let address = file.getAddress(path);
+    let content = file.readAddress(address);
+    if (!(content === undefined || content === null)) {
+        return address;
+    } else {
+        return -1;
+    }
+};
 
 Link.prototype.createSoft = function (path, name, address) {
     let file = new File();

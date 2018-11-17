@@ -247,25 +247,39 @@ _Terminal.prototype.formatType = function (typename) {
     return buffer;
 };
 
+_Terminal.prototype.forcePrint = function (data){
+    console.log(data);
+};
+
 _Terminal.prototype.print = function (data) {
     if (this.ostream[0] === "") {
-        console.log(data);
+        this.forcePrint(data);
     } else if (this.ostream[0] === ">") {
         let file = new File();
         let path = this.formatPath(this.ostream[1]);
         let filetype = file.getType(path);
-        if (filetype === "file") {
+        if (filetype === "file" || filetype==="hardlink") {
             file.updateContent(path, data);
         } else if (filetype === "null") {
-            let filename = file.getFileName(data);
-            let parentPath = file.getParentPath(data);
+            let filename = file.getFileName(path);
+            let parentPath = file.getParentPath(path);
             file.create(parentPath, filename, data);
+        } else if (filetype==="softlink"){
+            let link = new Link();
+            let checkExist = link.softExist(path);
+            if(checkExist >0 ){
+                file.writeAddress(checkExist,data);
+            } else {
+                this.forcePrint("Illegal file address.");
+            }
+        } else {
+            this.forcePrint("Doesn't support this type of output.");
         }
     } else if (this.ostream[0] === ">>") {
         let file = new File();
         let path = this.formatPath(this.ostream[1]);
         let filetype = file.getType(path);
-        if (filetype === "file") {
+        if (filetype === "file" || filetype==="hardlink") {
             let content = file.read(path);
             content += data;
             file.updateContent(this.formatPath(this.ostream[1]), content);
@@ -274,6 +288,16 @@ _Terminal.prototype.print = function (data) {
             let filename = file.getFileName(path);
             let parentPath = file.getParentPath(path);
             file.create(parentPath, filename, content);
+        } else if (filetype==="softlink"){
+            let link = new Link();
+            let checkExist = link.softExist(path);
+            if(checkExist >0 ){
+                file.appendAddress(checkExist,data);
+            } else {
+                this.forcePrint("Illegal file address.");
+            }
+        } else {
+            this.forcePrint("Doesn't support this type of output.");
         }
     }
     return 1;
@@ -309,7 +333,7 @@ _Terminal.prototype.scan = function (data) {
         }
         return true;
     });
-    arr = arr.map(function(item,index,array){
+    arr = arr.map(function (item, index, array) {
         return item.trim();
     });
     if (this.istream[0] !== "" && this.istream[1] !== "") {
@@ -320,12 +344,12 @@ _Terminal.prototype.scan = function (data) {
         append = append.map(function (item, index, array) {
             return item.trim();
         });
-        if(this.istream[0]==="<<") {
-            append.forEach(function(item,index,array){
+        if (this.istream[0] === "<<") {
+            append.forEach(function (item, index, array) {
                 arr[arr.length] = item;
             });
-        } else if (this.ostream[0]==="<"){
-            arr = append ;
+        } else if (this.ostream[0] === "<") {
+            arr = append;
         }
     }
     let command = arr[0];
