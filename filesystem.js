@@ -171,7 +171,7 @@ File.prototype.getPathArray = function (path) {
 
 File.prototype.getParentPathArray = function (path) {
     let arr = this.getPathArray(path);
-    arr.shift();
+    arr.pop();
     return arr;
 };
 

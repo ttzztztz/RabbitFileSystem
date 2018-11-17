@@ -116,9 +116,9 @@ Method.prototype.ln = function () {
     let address = file.getAddress(src);
     let filename = file.getFileName(dest);
     if (mode === "") {//hard link
-        return link.createHard(parentPath, filename, src);
+        return link.createHard(parentPath, filename, address);
     } else if (mode === "-s") {//soft link
-        return link.createSoft(parentPath, filename, src);
+        return link.createSoft(parentPath, filename, address);
     }
 };
 
@@ -151,6 +151,10 @@ Method.prototype.cd = function (route) {
     let terminal = new _Terminal();
     let path = terminal.formatPath(route);
     if (path === "/") return -3;
+    let lastChar = route.substr(route.length - 1, 1);
+    if (lastChar === "/") {
+        route = route.substr(0, route.length - 1);
+    }
     let file = new File();
     let type = file.getType(path);
     if (type !== "dir") return -5;
@@ -173,7 +177,7 @@ Method.prototype.mkdir = function (route) {
     let file = new File();
     let checkType = file.getType(route);
     if (checkType !== "null") return -1;
-    let arr = route.split("/");
+    let arr = file.getPathArray(route);
     let dirname = arr[arr.length - 1];
     arr.pop();
     let path = "/" + arr.join("/");
@@ -204,25 +208,31 @@ function _Terminal() {
 _Terminal.prototype.formatPath = function (path) {
     let first = path.substr(0, 1);
     let second = path.substr(0, 2);
+    let buffer = "";
     if (first === "/") {
-        return path;
+        buffer = path;
     } else if (second === "./") {
-        return currentDir + path.substr(1, path.length - 1);
+        buffer = currentDir + path.substr(1, path.length - 1);
     } else if (second === "..") {
         let file = new File();
         let currentParent = file.getParentPath(currentDir);
         let parentLastChar = currentParent.substr(currentParent.length - 1, 1);
         let nextFirstChar = (path.substr(2, path.length - 2)).substr(0, 1);
         if (parentLastChar === "/" && nextFirstChar === "/") {
-            return currentParent.substr(0, currentParent.length - 1) + path.substr(2, path.length - 2);
+            buffer = currentParent.substr(0, currentParent.length - 1) + path.substr(2, path.length - 2);
         } else if (parentLastChar === "/" || nextFirstChar === "/") {
-            return currentParent + path.substr(2, path.length - 2);
+            buffer = currentParent + path.substr(2, path.length - 2);
         } else if (parentLastChar !== "/" && nextFirstChar !== "/") {
-            return currentParent + "/" + path.substr(2, path.length - 2);
+            buffer = currentParent + "/" + path.substr(2, path.length - 2);
         }
     } else {
-        return currentDir + (currentDir === "/" ? "" : "/") + path;
+        buffer = currentDir + (currentDir === "/" ? "" : "/") + path;
     }
+    let lastChar = buffer.substr(buffer.length - 1, 1);
+    if (lastChar === "/") {
+        buffer = buffer.substr(0, buffer.length - 1);
+    }
+    return buffer;
 };
 
 _Terminal.prototype.formatType = function (typename) {
