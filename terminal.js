@@ -1,24 +1,26 @@
 const terminalReg = /\s*(".+?")+(((".+?"|[^\s])+)|)|(".+?"|[^"\s])+/g;
 const argsReg = /^"|"$/g;
-const errMessage = ["", "Already exists", "Directory doesn't exist", "Access denied", "File doesn't exist", "Type error", "Arguments Wrong number"];
+const errMessage = ["", "Already exists", "Directory doesn't exist", "Access denied", "File doesn't exist", "Type error", "Arguments Wrong number", "Illegal name"];
 const colLimit = 10;
 
 let currentDir = "/home";
 
-function Method() {
-
+function Method(bindTerminal) {
+    this.bindTerminal = bindTerminal;
 }
 
 Method.prototype.echo = function () {
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
+    let buffer = "";
     for (let i = 0, len = arguments.length; i < len; i++) {
-        terminal.print(arguments[i]);
+        buffer += arguments[i];
     }
+    terminal.print(buffer);
 };
 
 Method.prototype.cp = function () {
     let mode = "", src = "", dest = "";
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     if (arguments.length === 3) {
         mode = arguments[0];
         src = terminal.formatPath(arguments[1]);
@@ -46,7 +48,7 @@ Method.prototype.cp = function () {
 
 Method.prototype.mv = function () {
     let mode = "", src = "", dest = "";
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     if (arguments.length === 3) {
         mode = arguments[0];
         src = terminal.formatPath(arguments[1]);
@@ -74,7 +76,7 @@ Method.prototype.mv = function () {
 
 Method.prototype.rm = function () {
     let mode = "", path = "";
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     if (arguments.length === 2) {
         mode = arguments[0];
         path = terminal.formatPath(arguments[1]);
@@ -97,7 +99,7 @@ Method.prototype.rm = function () {
 
 Method.prototype.ln = function () {
     let mode = "", src = "", dest = "";
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     if (arguments.length === 3) {
         mode = arguments[0];
         src = terminal.formatPath(arguments[1]);
@@ -125,7 +127,7 @@ Method.prototype.ln = function () {
 Method.prototype.ls = function (mode) {
     if (mode === undefined || mode == null) mode = "";
     let buffer = "";
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     let directory = new Directory();
     let time = new Time();
     let lst = directory.list(currentDir);
@@ -138,7 +140,8 @@ Method.prototype.ls = function (mode) {
         if (mode === "" || mode === "-a") {
             buffer += item.name + "\t";
         } else if (mode === "-l") {
-            buffer += terminal.formatType(item.type)
+            buffer += "6rabbit " +
+                terminal.formatType(item.type)
                 + time.strtotime(item.time) + " "
                 + item.name + "\t\n";
         }
@@ -148,7 +151,7 @@ Method.prototype.ls = function (mode) {
 };
 
 Method.prototype.cd = function (route) {
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     let path = terminal.formatPath(route);
     if (path === "/") return -3;
     let lastChar = route.substr(route.length - 1, 1);
@@ -164,14 +167,14 @@ Method.prototype.cd = function (route) {
 
 Method.prototype.cat = function (route) {
     let file = new File();
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     route = terminal.formatPath(route);
     terminal.print(file.read(route));
     return 1;
 };
 
 Method.prototype.mkdir = function (route) {
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     route = terminal.formatPath(route);
     let directory = new Directory();
     let file = new File();
@@ -185,7 +188,7 @@ Method.prototype.mkdir = function (route) {
 };
 
 Method.prototype.touch = function (route) {
-    let terminal = new _Terminal();
+    let terminal = this.bindTerminal;
     route = terminal.formatPath(route);
     let file = new File();
     let result = file.getType(route);
@@ -199,10 +202,9 @@ Method.prototype.touch = function (route) {
     }
 };
 
-let method = new Method();
-
 function _Terminal() {
-
+    this.ostream = ["", ""];
+    this.istream = ["", ""];
 }
 
 _Terminal.prototype.formatPath = function (path) {
@@ -246,14 +248,86 @@ _Terminal.prototype.formatType = function (typename) {
 };
 
 _Terminal.prototype.print = function (data) {
-    console.log(data);
+    if (this.ostream[0] === "") {
+        console.log(data);
+    } else if (this.ostream[0] === ">") {
+        let file = new File();
+        let path = this.formatPath(this.ostream[1]);
+        let filetype = file.getType(path);
+        if (filetype === "file") {
+            file.updateContent(path, data);
+        } else if (filetype === "null") {
+            let filename = file.getFileName(data);
+            let parentPath = file.getParentPath(data);
+            file.create(parentPath, filename, data);
+        }
+    } else if (this.ostream[0] === ">>") {
+        let file = new File();
+        let path = this.formatPath(this.ostream[1]);
+        let filetype = file.getType(path);
+        if (filetype === "file") {
+            let content = file.read(path);
+            content += data;
+            file.updateContent(this.formatPath(this.ostream[1]), content);
+        } else if (filetype === "null") {
+            let content = data;
+            let filename = file.getFileName(path);
+            let parentPath = file.getParentPath(path);
+            file.create(parentPath, filename, content);
+        }
+    }
+    return 1;
 };
 
 _Terminal.prototype.scan = function (data) {
     let arr = data.match(terminalReg);
-    arr = arr.map(function (item, index, array) {
+    this.ostream = ["", ""];
+    this.istream = ["", ""];
+    let istreamFlag = 0, ostreamFlag = 0;
+    let that = this;
+    arr = arr.filter(function (item, index, array) {
+        if (istreamFlag === 1) {
+            istreamFlag = 0;
+            that.istream[1] = item.trim();
+            return false;
+        }
+        if (ostreamFlag === 1) {
+            ostreamFlag = 0;
+            that.ostream[1] = item.trim();
+            return false;
+        }
+        let temp = item.trim();
+        if (temp === "<" || temp === "<<") {
+            that.istream[0] = temp;
+            istreamFlag = 1;
+            return false;
+        }
+        if (temp === ">" || temp === ">>") {
+            that.ostream[0] = temp;
+            ostreamFlag = 1;
+            return false;
+        }
+        return true;
+    });
+    arr = arr.map(function(item,index,array){
         return item.trim();
     });
+    if (this.istream[0] !== "" && this.istream[1] !== "") {
+        let file = new File();
+        let content = file.read(this.istream[1]);
+        let append = content.match(terminalReg);
+        //don't support more level redirect for effective consideration
+        append = append.map(function (item, index, array) {
+            return item.trim();
+        });
+        if(this.istream[0]==="<<") {
+            append.forEach(function(item,index,array){
+                arr[arr.length] = item;
+            });
+        } else if (this.ostream[0]==="<"){
+            arr = append ;
+        }
+    }
     let command = arr[0];
     arr.shift();
     let args = "";
@@ -262,6 +336,7 @@ _Terminal.prototype.scan = function (data) {
         if (index !== 0) args += ",";
         args += '"' + item + '"';
     });
+    let method = new Method(this);
     let result = eval("method." + command + "(" + args + ")");
     if (result < 0) {
         let _index = result * -1;

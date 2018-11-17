@@ -19,6 +19,8 @@ const initFileIndex = [
         ],
     }
 ];
+const nameReg = /^(\w)+$/g;
+
 let fileObject = {
     address: 0,
     name: "",
@@ -139,6 +141,7 @@ function File() {
 File.prototype.create = function (path, name, content = "RBFS_File", fix_address = -1, is_hardlink = 0) {
     if (this.getType(path + "/" + name) !== "null") return -1;
     if (this.getType(path) !== "dir") return -2;
+    if (name.match(nameReg) === null) return -7;
     let _file_index = Object.create(fileObject);
     if (fix_address === -1) _file_index.address = fileAutoIncrement++;
     else _file_index.address = fix_address;
@@ -376,6 +379,7 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
         let _structure2 = this.getPathArray(path_to);
         if (_structure2[0] !== "home") return -3;
         filename = _structure2[_structure2.length - 1];
+        if (filename.match(nameReg) === null) return -7;
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
         if (this.getType(_dir.path + "/" + _dir.name) !== "null") return -1;
         if (this.getType(_dir.path) === "null") return -2;
@@ -420,6 +424,7 @@ File.prototype.move = function (path_from, path_to, is_dir = 0) {
         let _structure2 = this.getPathArray(path_to);
         if (_structure2[0] !== "home") return -3;
         filename = _structure2[_structure2.length - 1];
+        if (filename.match(nameReg) === null) return -7;
         _dir = is_dir ? directory.getDirObject(_structure2, 1) : this.getDirObject(_structure2, 1);
         if (this.getType(_dir.path === "/" ? "/" : "/" + _dir.name) === "null") return -2;
         copy.name = filename;
@@ -476,6 +481,7 @@ Directory.prototype.create = function (path, name) {
     let file = new File();
     if (file.getType(path + "/" + name) !== "null") return -1;
     if (file.getType(path) !== "dir") return -2;
+    if (name.match(nameReg) === null) return -7;
     let _file_index = Object.create(fileObject);
     _file_index.address = fileAutoIncrement++;
     _file_index.name = name;
@@ -547,6 +553,7 @@ Directory.prototype.move = function (path_from, path_to) {
     let to_arr = file.getPathArray(path_to);
     if (to_arr[0] !== "home") return -3;
     let to_dirname = to_arr[to_arr.length - 1];
+    if (to_dirname.match(nameReg) === null) return -7;
     to_arr.pop();
     if (file.getType("/" + to_arr.join("/")) !== "dir") return -1;
     let _path_to = "/" + to_arr.join("/") + "/" + to_dirname;
@@ -565,6 +572,7 @@ Directory.prototype.copy = function (path_from, path_to) {
     let to_arr = file.getPathArray(path_to);
     if (to_arr[0] !== "home") return -3;
     let to_dirname = to_arr[to_arr.length - 1];
+    if (to_dirname.match(nameReg) === null) return -7;
     to_arr.pop();
     if (file.getType("/" + to_arr.join("/")) !== "dir") return -2;
     let _path_to = "/" + to_arr.join("/") + "/" + to_dirname;
