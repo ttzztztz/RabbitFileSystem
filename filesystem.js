@@ -59,7 +59,7 @@ Time.prototype.add0 = function (m) {
  * @constructor
  */
 Time.prototype.strtotime = function (timestamp) {
-    let time = new Date(parseInt(timestamp) * 1000);
+    let time = new Date(parseInt(timestamp));
     let y = time.getFullYear();
     let m = time.getMonth() + 1;
     let d = time.getDate();
