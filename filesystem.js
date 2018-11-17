@@ -721,5 +721,4 @@ function _RBFS() {
     this.Save = new Save();
     this.Time = new Time();
     this.Init = new Init();
-    console.log("Welcome to Rabbit Filesystem.");
 }

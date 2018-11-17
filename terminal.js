@@ -248,7 +248,9 @@ _Terminal.prototype.formatType = function (typename) {
 };
 
 _Terminal.prototype.forcePrint = function (data){
-    console.log(data);
+    let dom = document.getElementById("stdout");
+    dom.innerHTML += data+"\n";
+    dom.scrollTo(0,dom.scrollHeight);
 };
 
 _Terminal.prototype.print = function (data) {
@@ -304,6 +306,7 @@ _Terminal.prototype.print = function (data) {
 };
 
 _Terminal.prototype.scan = function (data) {
+    this.forcePrint("> "+data);
     let arr = data.match(terminalReg);
     this.ostream = ["", ""];
     this.istream = ["", ""];
@@ -338,7 +341,7 @@ _Terminal.prototype.scan = function (data) {
     });
     if (this.istream[0] !== "" && this.istream[1] !== "") {
         let file = new File();
-        let content = file.read(this.istream[1]);
+        let content = file.read(this.formatPath(this.istream[1]));
         let append = content.match(terminalReg);
         //don't support more level redirect for effective consideration
         append = append.map(function (item, index, array) {
