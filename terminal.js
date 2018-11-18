@@ -227,8 +227,6 @@ _Terminal.prototype.formatPath = function (path) {
                 buffer.push(item);
             }
         });
-    } else {
-        buffer2 = buffer2.splice(0, 1);
     }
     buffer2.forEach(function (item, index, array) {
         if (item === "..") {
@@ -239,6 +237,9 @@ _Terminal.prototype.formatPath = function (path) {
     });
     if (buffer[buffer.length - 1] === "") {
         buffer.pop();
+    }
+    if (buffer[0] === "") {
+        buffer.shift();
     }
     return "/" + buffer.join("/");
     /**
