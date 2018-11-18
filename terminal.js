@@ -132,18 +132,18 @@ Method.prototype.ls = function (mode) {
     let time = new Time();
     let lst = directory.list(currentDir);
     if (mode === "-a") {
-        buffer = "..\t";
+        buffer = terminal.formatName(".", "system") + "\t" + terminal.formatName("..", "system") + "\t";
     } else if (mode === "-l") {
         buffer = "total " + lst.contains.length + "\n";
     }
     lst.contains.forEach(function (item, index, array) {
         if (mode === "" || mode === "-a") {
-            buffer += item.name + "\t";
+            buffer += terminal.formatName(item.name, item.type) + "\t";
         } else if (mode === "-l") {
             buffer += "6rabbit " +
                 terminal.formatType(item.type)
                 + time.strtotime(item.time) + " "
-                + item.name + "\t\n";
+                + terminal.formatName(item.name, item.type) + "\n";
         }
     });
     terminal.print(buffer);
@@ -155,8 +155,8 @@ Method.prototype.cd = function (route) {
     let path = terminal.formatPath(route);
     const bug = /^\/\.+$/g;
     let catch_bug = path.match(bug);
-    if(catch_bug) return -3;
-    if (path === "/" || path==="" ) return -3;
+    if (catch_bug) return -3;
+    if (path === "/" || path === "") return -3;
     let lastChar = route.substr(route.length - 1, 1);
     if (lastChar === "/") {
         route = route.substr(0, route.length - 1);
@@ -172,7 +172,12 @@ Method.prototype.cat = function (route) {
     let file = new File();
     let terminal = this.bindTerminal;
     route = terminal.formatPath(route);
-    terminal.print(file.read(route));
+    let buffer = file.read(route);
+    if (buffer === null) {
+        terminal.print("File doesn't exist.", 1);
+    } else {
+        terminal.print(buffer);
+    }
     return 1;
 };
 
@@ -250,41 +255,62 @@ _Terminal.prototype.formatType = function (typename) {
     return buffer;
 };
 
-_Terminal.prototype.forcePrint = function (data){
-    let dom = document.getElementById("stdout");
-    dom.innerHTML += data+"\n";
-    dom.scrollTo(0,dom.scrollHeight);
+_Terminal.prototype.forcePrint = function (data, error = 0) {
+    let content = document.getElementById("template").innerHTML;
+    let stdout = document.getElementById("stdout");
+    content = content.replace("{content}", data);
+    content = content.replace("{color}", error === 1 ? "red" : "white");
+    stdout.innerHTML += content;
 };
 
-_Terminal.prototype.print = function (data) {
+_Terminal.prototype.formatName = function (filename, filetype) {
+    let buffer = filename;
+    switch (filetype) {
+        case "dir" :
+            buffer = "<span style='background:dodgerblue;'>" + buffer + "</span>";
+            break;
+        case "softlink" :
+            buffer = "<span style='color:orangered;'>" + buffer + "</span>";
+            break;
+        case "hardlink" :
+            buffer = "<span style='color:greenyellow;'>" + buffer + "</span>";
+            break;
+        case "system" :
+            buffer = "<span style='color:grey;'>" + buffer + "</span>";
+            break;
+    }
+    return buffer;
+};
+
+_Terminal.prototype.print = function (data, error = 0) {
     if (this.ostream[0] === "") {
-        this.forcePrint(data);
+        this.forcePrint(data, error);
     } else if (this.ostream[0] === ">") {
         let file = new File();
         let path = this.formatPath(this.ostream[1]);
         let filetype = file.getType(path);
-        if (filetype === "file" || filetype==="hardlink") {
+        if (filetype === "file" || filetype === "hardlink") {
             file.updateContent(path, data);
         } else if (filetype === "null") {
             let filename = file.getFileName(path);
             let parentPath = file.getParentPath(path);
             file.create(parentPath, filename, data);
-        } else if (filetype==="softlink"){
+        } else if (filetype === "softlink") {
             let link = new Link();
             let checkExist = link.softExist(path);
-            if(checkExist >0 ){
-                file.writeAddress(checkExist,data);
+            if (checkExist > 0) {
+                file.writeAddress(checkExist, data);
             } else {
-                this.forcePrint("Illegal file address.");
+                this.forcePrint("Illegal file address.", 1);
             }
         } else {
-            this.forcePrint("Doesn't support this type of output.");
+            this.forcePrint("Doesn't support this type of output.", 1);
         }
     } else if (this.ostream[0] === ">>") {
         let file = new File();
         let path = this.formatPath(this.ostream[1]);
         let filetype = file.getType(path);
-        if (filetype === "file" || filetype==="hardlink") {
+        if (filetype === "file" || filetype === "hardlink") {
             let content = file.read(path);
             content += data;
             file.updateContent(this.formatPath(this.ostream[1]), content);
@@ -293,23 +319,23 @@ _Terminal.prototype.print = function (data) {
             let filename = file.getFileName(path);
             let parentPath = file.getParentPath(path);
             file.create(parentPath, filename, content);
-        } else if (filetype==="softlink"){
+        } else if (filetype === "softlink") {
             let link = new Link();
             let checkExist = link.softExist(path);
-            if(checkExist >0 ){
-                file.appendAddress(checkExist,data);
+            if (checkExist > 0) {
+                file.appendAddress(checkExist, data);
             } else {
-                this.forcePrint("Illegal file address.");
+                this.forcePrint("Illegal file address.", 1);
             }
         } else {
-            this.forcePrint("Doesn't support this type of output.");
+            this.forcePrint("Doesn't support this type of output.", 1);
         }
     }
     return 1;
 };
 
 _Terminal.prototype.scan = function (data) {
-    this.forcePrint("> "+data);
+    this.forcePrint("\n[root@rabbit ~] " + data);
     let arr = data.match(terminalReg);
     this.ostream = ["", ""];
     this.istream = ["", ""];
@@ -370,7 +396,7 @@ _Terminal.prototype.scan = function (data) {
     let result = eval("method." + command + "(" + args + ")");
     if (result < 0) {
         let _index = result * -1;
-        this.print(errMessage[_index]);
+        this.print(errMessage[_index], 1);
     }
     return 1;
 };
