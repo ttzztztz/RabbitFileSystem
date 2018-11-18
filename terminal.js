@@ -150,6 +150,11 @@ Method.prototype.ls = function (mode) {
     return 1;
 };
 
+Method.prototype.pwd = function () {
+    let terminal = this.bindTerminal;
+    terminal.print(currentDir);
+};
+
 Method.prototype.cd = function (route) {
     let terminal = this.bindTerminal;
     let path = terminal.formatPath(route);
