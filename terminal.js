@@ -216,10 +216,37 @@ function _Terminal() {
 }
 
 _Terminal.prototype.formatPath = function (path) {
-    let first = path.substr(0, 1);
-    let second = path.substr(0, 2);
-    let buffer = "";
-    if (first === "/") {
+    let buffer = [];
+    path = path.replace(/(?<!\.)\.\//g, "");
+    let firstChar = path.substr(0, 1);
+    let buffer2 = path.split("/");
+    if (firstChar !== "/") {
+        let preBuffer = currentDir.split("/");
+        preBuffer.forEach(function (item, index, array) {
+            if (item !== "") {
+                buffer.push(item);
+            }
+        });
+    } else {
+        buffer2 = buffer2.splice(0, 1);
+    }
+    buffer2.forEach(function (item, index, array) {
+        if (item === "..") {
+            buffer.pop();
+        } else {
+            buffer.push(item);
+        }
+    });
+    if (buffer[buffer.length - 1] === "") {
+        buffer.pop();
+    }
+    return "/" + buffer.join("/");
+    /**
+     No more use
+     let first = path.substr(0, 1);
+     let second = path.substr(0, 2);
+     let buffer = "";
+     if (first === "/") {
         buffer = path;
     } else if (second === "./") {
         buffer = currentDir + path.substr(1, path.length - 1);
@@ -238,11 +265,12 @@ _Terminal.prototype.formatPath = function (path) {
     } else {
         buffer = currentDir + (currentDir === "/" ? "" : "/") + path;
     }
-    let lastChar = buffer.substr(buffer.length - 1, 1);
-    if (lastChar === "/") {
+     let lastChar = buffer.substr(buffer.length - 1, 1);
+     if (lastChar === "/") {
         buffer = buffer.substr(0, buffer.length - 1);
     }
-    return buffer;
+     return buffer;
+     */
 };
 
 _Terminal.prototype.formatType = function (typename) {

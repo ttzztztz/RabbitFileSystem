@@ -9,7 +9,8 @@
         font-size: 16px;
         font-family: monospace;
     }
-    #stdin{
+
+    #stdin {
         border: 0;
         width: 80%;
         background: black;
@@ -19,7 +20,8 @@
         font-size: 16px;
         font-family: monospace;
     }
-    #stdout{
+
+    #stdout {
         margin-bottom: 1em;
     }
 </style>
@@ -44,17 +46,19 @@
 
     let stdin = document.getElementById("stdin");
     let stdout = document.getElementById("stdout");
-    stdin.focus();
 
-    stdin.addEventListener("keydown",function(e){
-        if(e.key === "Enter"){
+    stdin.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
             let _in = stdin.value;
             stdin.value = "";
             Terminal.scan(_in);
+            scrollTo(0, document.body.scrollHeight);
         }
     });
-    document.addEventListener("keydown",function(e){
+    document.addEventListener("keydown", function (e) {
         stdin.focus();
     });
+
+    stdin.focus();
 </script>
 </html>
