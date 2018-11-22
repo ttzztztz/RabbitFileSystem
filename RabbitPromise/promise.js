@@ -1,7 +1,7 @@
 const PROMISE_PENDING = 0;
 const PROMISE_RESOLVED = 1;
 const PROMISE_REJECTED = 2;
-let nullFunction = function (par){};
+const nullFunction = function (par){};
 
 function RabbitPromise(func) {
     this.value = null;
