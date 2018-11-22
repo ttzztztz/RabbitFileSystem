@@ -1,7 +1,7 @@
 const PROMISE_PENDING = 0;
 const PROMISE_RESOLVED = 1;
 const PROMISE_REJECTED = 2;
-function nullFunction(par){}
+let nullFunction = function (par){};
 
 function RabbitPromise(func) {
     this.value = null;
@@ -34,57 +34,57 @@ RabbitPromise.prototype.reject = function (val) {
         }
     }
 };
-RabbitPromise.prototype.then = function (__resolve, __reject) {
-    if(__resolve === __reject) this.status = PROMISE_REJECTED;
-    if (typeof __resolve !== "function") __resolve = nullFunction;
-    if (typeof __reject !== "function") __reject = nullFunction;
+RabbitPromise.prototype.then = function (resolve_old, reject_old) {
+    if(resolve_old === reject_old) this.status = PROMISE_REJECTED;
+    if (typeof resolve_old !== "function") resolve_old = nullFunction;
+    if (typeof reject_old !== "function") reject_old = nullFunction;
     if (this.status === PROMISE_RESOLVED) {
-        return new RabbitPromise(function (resolve, reject) {
+        return new RabbitPromise(function (resolve_new, reject_new) {
             try {
-                let x = __resolve(this.value);
+                let x = resolve_old(this.value);
                 if (x instanceof RabbitPromise) {
-                    x.then(resolve, reject);
+                    x.then(resolve_new, reject_new);
                 } else {
-                    resolve(x);
+                    resolve_new(x);
                 }
             } catch (e) {
-                reject(e);
+                reject_new(e);
             }
         });
     } else if (this.status === PROMISE_REJECTED) {
-        return new RabbitPromise(function (resolve, reject) {
+        return new RabbitPromise(function (resolve_new, reject_new) {
             try {
-                let x = __reject(this.value);
+                let x = reject_old(this.value);
                 if (x instanceof RabbitPromise) {
-                    x.then(resolve, reject);
+                    x.then(resolve_new, reject_new);
                 } else {
-                    reject(x);
+                    reject_new(x);
                 }
             } catch (e) {
-                reject(e);
+                reject_new(e);
             }
         });
     } else if (this.status === PROMISE_PENDING) {
         let that = this;
-        return new RabbitPromise(function (resolve, reject) {
+        return new RabbitPromise(function (resolve_new, reject_new) {
             that._resolve_callback.push(function (value) {
                 try {
-                    let x = __resolve(that.value);
+                    let x = resolve_old(that.value);
                     if (x instanceof RabbitPromise) {
-                        x.then(resolve, reject);
+                        x.then(resolve_new, reject_new);
                     }
                 } catch (e) {
-                    reject(e);
+                    reject_new(e);
                 }
             });
             that._reject_callback.push(function (reason) {
                 try {
-                    let x = __reject(that.value);
+                    let x = reject_old(that.value);
                     if (x instanceof RabbitPromise) {
-                        x.then(resolve, reject);
+                        x.then(resolve_new, reject_new);
                     }
                 } catch (e) {
-                    reject(e);
+                    reject_new(e);
                 }
             });
         });
