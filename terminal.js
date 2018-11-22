@@ -6,7 +6,11 @@ const colLimit = 10;
 let currentDir = "/home";
 
 function Method(bindTerminal) {
-    this.bindTerminal = bindTerminal;
+    if (this instanceof Method) {
+        this.bindTerminal = bindTerminal;
+    } else {
+        return new Method(bindTerminal);
+    }
 }
 
 Method.prototype.echo = function () {
@@ -216,8 +220,12 @@ Method.prototype.touch = function (route) {
 };
 
 function _Terminal() {
-    this.ostream = ["", ""];
-    this.istream = ["", ""];
+    if (this instanceof _Terminal) {
+        this.ostream = ["", ""];
+        this.istream = ["", ""];
+    } else {
+        return new _Terminal();
+    }
 }
 
 _Terminal.prototype.formatPath = function (path) {
