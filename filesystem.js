@@ -5,7 +5,6 @@ const initFileIndex = [
         path: "/",
         type: "dir",
         time: 0,
-        other: "",
         contains: [
             {
                 address: 1,
@@ -13,7 +12,6 @@ const initFileIndex = [
                 path: "/home",
                 type: "file",
                 time: 0,
-                other: "",
                 contains: [],
             },
         ],
@@ -27,7 +25,6 @@ let fileObject = {
     path: "",
     type: "file",
     time: 0,
-    other: "",
     contains: [],
 };
 let hardLinkObject = {
