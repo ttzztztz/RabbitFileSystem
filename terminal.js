@@ -140,7 +140,7 @@ Method.prototype.ls = function (mode) {
     } else if (mode === "-l") {
         buffer = "total " + lst.contains.length + "\n";
     }
-    lst.contains.forEach(function (item, index, array) {
+    lst.contains.forEach(item => {
         if (mode === "" || mode === "-a") {
             buffer += terminal.formatName(item.name, item.type) + "\t";
         } else if (mode === "-l") {
@@ -235,13 +235,13 @@ _Terminal.prototype.formatPath = function (path) {
     let buffer2 = path.split("/");
     if (firstChar !== "/") {
         let preBuffer = currentDir.split("/");
-        preBuffer.forEach(function (item, index, array) {
+        preBuffer.forEach((item, index, array) => {
             if (item !== "") {
                 buffer.push(item);
             }
         });
     }
-    buffer2.forEach(function (item, index, array) {
+    buffer2.forEach((item, index, array) => {
         if (item === "..") {
             buffer.pop();
         } else {
@@ -383,7 +383,7 @@ _Terminal.prototype.scan = function (data) {
     this.istream = ["", ""];
     let istreamFlag = 0, ostreamFlag = 0;
     let that = this;
-    arr = arr.filter(function (item, index, array) {
+    arr = arr.filter((item, index, array) => {
         if (istreamFlag === 1) {
             istreamFlag = 0;
             that.istream[1] = item.trim();
@@ -407,19 +407,15 @@ _Terminal.prototype.scan = function (data) {
         }
         return true;
     });
-    arr = arr.map(function (item, index, array) {
-        return item.trim();
-    });
+    arr = arr.map(item => item.trim());
     if (this.istream[0] !== "" && this.istream[1] !== "") {
         let file = new File();
         let content = file.read(this.formatPath(this.istream[1]));
         let append = content.match(terminalReg);
         //don't support more level redirect for effective consideration
-        append = append.map(function (item, index, array) {
-            return item.trim();
-        });
+        append = append.map(item => item.trim());
         if (this.istream[0] === "<<") {
-            append.forEach(function (item, index, array) {
+            append.forEach(item => {
                 arr[arr.length] = item;
             });
         } else if (this.ostream[0] === "<") {
@@ -429,7 +425,7 @@ _Terminal.prototype.scan = function (data) {
     let command = arr[0];
     arr.shift();
     let args = "";
-    arr.forEach(function (item, index, array) {
+    arr.forEach((item, index, array) => {
         item = item.replace(argsReg, "");
         if (index !== 0) args += ",";
         args += '"' + item + '"';

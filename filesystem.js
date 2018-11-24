@@ -239,7 +239,7 @@ File.prototype.delete = function (path, is_dir = 0) {
     let _dir = is_dir ? directory.getDirObject(_structure, 1) : this.getDirObject(_structure, 1);
     let result = 0;
     let filename = _structure[_structure.length - 1];
-    _dir.contains = _dir.contains.filter(function (item, index, array) {
+    _dir.contains = _dir.contains.filter(item => {
         if (item.name === filename) {
             let link = new Link();
             if (item.type === "file") {
@@ -382,7 +382,7 @@ File.prototype.copy = function (path_from, path_to, is_dir = 0) {
     let filename = _structure[_structure.length - 1];
     let copy = null;
     let result = 0;
-    _dir.contains.forEach(function (item, index, array) {
+    _dir.contains.forEach(item => {
         if (item.name === filename) {
             copy = JSON.parse(JSON.stringify(item));
         }
@@ -426,7 +426,7 @@ File.prototype.move = function (path_from, path_to, is_dir = 0) {
     let filename = _structure[_structure.length - 1];
     let copy = null;
     let result = 0;
-    _dir.contains = _dir.contains.filter(function (item, index, array) {
+    _dir.contains = _dir.contains.filter(item => {
         if (item.name === filename) {
             copy = Object.assign({}, item);
         }
@@ -514,7 +514,7 @@ Directory.prototype.updatePath = function (root) {
     let file = new File();
     let tree = file.getDirObject(root, 0);
     let that = this;
-    tree.contains.forEach(function (item, index, array) {
+    tree.contains.forEach(item => {
         item.path = root;
         if (item.type === "dir") {
             that.updatePath(root + "/" + item.name);
@@ -526,7 +526,7 @@ Directory.prototype.updateAddress = function (root) {
     let file = new File();
     let tree = file.getDirObject(root, 0);
     let that = this;
-    tree.contains.forEach(function (item, index, array) {
+    tree.contains.forEach(item => {
         item.path = root;
         if (item.type === "file" || item.type === "dir") {
             let content = file.readAddress(item.address);
@@ -546,7 +546,7 @@ Directory.prototype.deleteAddress = function (root) {
     let file = new File();
     let tree = file.getDirObject(root, 0);
     let that = this;
-    tree.contains.forEach(function (item, index, array) {
+    tree.contains.forEach(item => {
         if (item.type === "dir") {
             that.deleteAddress(root + "/" + item.name);
         } else if (item.type === "hardlink" || item.type === "file") {
@@ -657,7 +657,7 @@ Link.prototype.createSoft = function (path, name, address) {
 
 Link.prototype.findHard = function (address) {
     let result = null;
-    hardLinkIndex.some(function (item, index, array) {
+    hardLinkIndex.some(item => {
         if (item.address === address) {
             result = item;
             return true;
@@ -691,9 +691,7 @@ Link.prototype.deleteHard = function (address) {
     if (result.count === 0) {
         let storage = new Storage();
         storage.delete("RBFS_file_" + result.address);
-        hardLinkIndex = hardLinkIndex.filter(function (item, index, array) {
-            return item.address !== address;
-        });
+        hardLinkIndex = hardLinkIndex.filter(item => item.address !== address);
     }
     let save = new Save();
     save.hardLinkIndex();
