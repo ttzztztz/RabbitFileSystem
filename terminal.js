@@ -308,16 +308,16 @@ _Terminal.prototype.forcePrint = function (data, error = 0) {
 _Terminal.prototype.formatName = function (filename, filetype) {
     let buffer = filename;
     switch (filetype) {
-        case "dir" :
+        case "dir":
             buffer = "<span style='background:dodgerblue;'>" + buffer + "</span>";
             break;
-        case "softlink" :
+        case "softlink":
             buffer = "<span style='color:orangered;'>" + buffer + "</span>";
             break;
-        case "hardlink" :
+        case "hardlink":
             buffer = "<span style='color:greenyellow;'>" + buffer + "</span>";
             break;
-        case "system" :
+        case "system":
             buffer = "<span style='color:grey;'>" + buffer + "</span>";
             break;
     }

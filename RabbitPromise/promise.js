@@ -3,7 +3,12 @@ const PROMISE_RESOLVED = 1;
 const PROMISE_REJECTED = 2;
 const nullFunction = function (par){};
 
+RobbitPromise.resolve = function (val) {
+
+};
+
 function RabbitPromise(func) {
+
     this.value = null;
     this._resolve_callback = [];
     this._reject_callback = [];
